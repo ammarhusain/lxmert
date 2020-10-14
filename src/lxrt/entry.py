@@ -33,21 +33,31 @@ class InputFeatures(object):
         self.segment_ids = segment_ids
 
 
-def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_query=None):
+def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries=None):
     """Loads a data file into a list of `InputBatch`s."""
 
     features = []
+    # make sure we have semantic queries for all sentences
+    if semantic_queries is not None:
+      assert(len(sents) == len(semantic_queries))
     for (i, sent) in enumerate(sents):
         tokens_a = tokenizer.tokenize(sent.strip())
-
-        # Account for [CLS] and [SEP] with "- 2"
-        if len(tokens_a) > max_seq_length - 2:
-            tokens_a = tokens_a[:(max_seq_length - 2)]
-        
         # Keep segment id which allows loading BERT-weights.
-        tokens = ["[CLS]"] + tokens_a + ["[SEP]"]
+        tokens = ["[CLS]"] + tokens_a + ["[SEP]"] 
         segment_ids = [0] * len(tokens)
 
+        tokens_b = []
+        if semantic_queries is not None:
+          tokens_b = tokenizer.tokenize(semantic_queries[i].strip())
+          tokens += tokens_b + ["[SEP]"]
+          segment_ids_b = [1] * (len(tokens_b) + 1)
+          segment_ids += segment_ids_b
+
+        # Account for [CLS] and [SEP] with "- 2"
+        if len(tokens) > max_seq_length - 2:
+          assert False, f"Tokens are longer than max_seq_length {len(tokens)}"
+          #tokens_a = tokens_a[:(max_seq_length - 2)]
+                                 
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
@@ -106,9 +116,9 @@ class LXRTEncoder(nn.Module):
     def dim(self):
         return 768
 
-    def forward(self, sents, feats, visual_attention_mask=None, semantic_query=None):
+    def forward(self, sents, feats, visual_attention_mask=None, semantic_queries=None):
         train_features = convert_sents_to_features(
-            sents, self.max_seq_length, self.tokenizer)
+            sents, self.max_seq_length, self.tokenizer, semantic_queries=semantic_queries)
 
         input_ids = torch.tensor([f.input_ids for f in train_features], dtype=torch.long).cuda()
         input_mask = torch.tensor([f.input_mask for f in train_features], dtype=torch.long).cuda()

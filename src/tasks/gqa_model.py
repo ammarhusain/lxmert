@@ -8,7 +8,7 @@ from lxrt.entry import LXRTEncoder
 from lxrt.modeling import BertLayerNorm, GeLU
 
 # Max length including <bos> and <eos>
-MAX_GQA_LENGTH = 20
+MAX_GQA_LENGTH = 50
 
 
 class GQAModel(nn.Module):
@@ -34,7 +34,7 @@ class GQAModel(nn.Module):
         :param feat: (b, o, f)
         :param pos:  (b, o, 4)
         :param sent: (b,) Type -- list of string
-        :param leng: (b,) Type -- int numpy array
+        :param semantic_queries: (b,) Type -- list of string semantic queries corresponding to the sent
         :return: (b, num_answer) The logit of each answers.
         """
         x = self.lxrt_encoder(sent, (feat, pos))
