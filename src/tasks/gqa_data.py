@@ -16,7 +16,7 @@ from utils import load_obj_tsv
 TINY_IMG_NUM = 512
 FAST_IMG_NUM = 5000
 
-
+PATH_TO_DATA = "data/gqa/lxmert_data/"
 class GQADataset:
     """
     A GQA data example in json file:
@@ -36,7 +36,7 @@ class GQADataset:
         # Loading datasets to data
         self.data = []
         for split in self.splits:
-            self.data.extend(json.load(open("data/gqa/%s.json" % split)))
+            self.data.extend(json.load(open(PATH_TO_DATA + "%s.json" % split)))
         print("Load %d data from split(s) %s." % (len(self.data), self.name))
 
         # List to dict (for evaluation and others)
@@ -46,8 +46,8 @@ class GQADataset:
         }
 
         # Answers
-        self.ans2label = json.load(open("data/gqa/trainval_ans2label.json"))
-        self.label2ans = json.load(open("data/gqa/trainval_label2ans.json"))
+        self.ans2label = json.load(open(PATH_TO_DATA + "trainval_ans2label.json"))
+        self.label2ans = json.load(open(PATH_TO_DATA + "trainval_label2ans.json"))
         assert len(self.ans2label) == len(self.label2ans)
         for ans, label in self.ans2label.items():
             assert self.label2ans[label] == ans
@@ -66,9 +66,9 @@ class GQABufferLoader():
 
     def load_data(self, name, number):
         if name == 'testdev':
-            path = "data/vg_gqa_imgfeat/gqa_testdev_obj36.tsv"
+            path = PATH_TO_DATA + "vg_gqa_imgfeat/gqa_testdev_obj36.tsv"
         else:
-            path = "data/vg_gqa_imgfeat/vg_gqa_obj36.tsv"
+            path = PATH_TO_DATA + "vg_gqa_imgfeat/vg_gqa_obj36.tsv"
         key = "%s_%d" % (path, number)
         if key not in self.key2data:
             self.key2data[key] = load_obj_tsv(
@@ -126,7 +126,7 @@ class GQATorchDataset(Dataset):
 
         img_id = datum['img_id']
         ques_id = datum['question_id']
-        ques = datum['sent']
+        ques = datum['sent'] + datum['semantic_str']
 
         # Get image info
         img_info = self.imgid2img[img_id]
