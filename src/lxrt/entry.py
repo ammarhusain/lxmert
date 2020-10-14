@@ -46,13 +46,12 @@ def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries
         tokens = ["[CLS]"] + tokens_a + ["[SEP]"] 
         segment_ids = [0] * len(tokens)
 
-        tokens_b = []
-        if semantic_queries is not None:
-          tokens_b = tokenizer.tokenize(semantic_queries[i].strip())
+        tokens_b = tokenizer.tokenize(semantic_queries[i].strip())
+        if len(tokens_b) > 0:
           tokens += tokens_b + ["[SEP]"]
           segment_ids_b = [1] * (len(tokens_b) + 1)
           segment_ids += segment_ids_b
-
+  
         # Account for [CLS] and [SEP] with "- 2"
         if len(tokens) > max_seq_length - 2:
           assert False, f"Tokens are longer than max_seq_length {len(tokens)}"

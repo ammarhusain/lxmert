@@ -127,7 +127,7 @@ class GQATorchDataset(Dataset):
         img_id = datum['img_id']
         ques_id = datum['question_id']
         ques = datum['sent']
-        sem_query = datum['semantic_str']
+        sem_query = ""#datum['semantic_str']
 
         # Get image info
         img_info = self.imgid2img[img_id]
