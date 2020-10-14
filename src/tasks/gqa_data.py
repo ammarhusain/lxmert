@@ -126,7 +126,8 @@ class GQATorchDataset(Dataset):
 
         img_id = datum['img_id']
         ques_id = datum['question_id']
-        ques = datum['sent'] + datum['semantic_str']
+        ques = datum['sent']
+        sem_query = datum['semantic_str']
 
         # Get image info
         img_info = self.imgid2img[img_id]
@@ -150,9 +151,9 @@ class GQATorchDataset(Dataset):
             for ans, score in label.items():
                 if ans in self.raw_dataset.ans2label:
                     target[self.raw_dataset.ans2label[ans]] = score
-            return ques_id, feats, boxes, ques, target
+            return ques_id, feats, boxes, ques, sem_query, target
         else:
-            return ques_id, feats, boxes, ques
+            return ques_id, feats, boxes, ques, sem_query
 
 
 class GQAEvaluator:

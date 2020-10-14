@@ -84,13 +84,13 @@ class GQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, target) in iter_wrapper(enumerate(loader)):
+            for i, (ques_id, feats, boxes, sent, sem_query, target) in iter_wrapper(enumerate(loader)):
 
                 self.model.train()
                 self.optim.zero_grad()
 
                 feats, boxes, target = feats.cuda(), boxes.cuda(), target.cuda()
-                logit = self.model(feats, boxes, sent)
+                logit = self.model(feats, boxes, sent, sem_query)
                 assert logit.dim() == target.dim() == 2
                 if args.mce_loss:
                     max_value, target = target.max(1)
@@ -132,10 +132,10 @@ class GQA:
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
         for i, datum_tuple in enumerate(loader):
-            ques_id, feats, boxes, sent = datum_tuple[:4]   # avoid handling target
+            ques_id, feats, boxes, sent, sem_query = datum_tuple[:5]   # avoid handling target
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
-                logit = self.model(feats, boxes, sent)
+                logit = self.model(feats, boxes, sent, sem_query)
                 score, label = logit.max(1)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
@@ -153,7 +153,7 @@ class GQA:
     def oracle_score(data_tuple):
         dset, loader, evaluator = data_tuple
         quesid2ans = {}
-        for i, (ques_id, feats, boxes, sent, target) in enumerate(loader):
+        for i, (ques_id, feats, boxes, sent, sem_query, target) in enumerate(loader):
             _, label = target.max(1)
             for qid, l in zip(ques_id, label.cpu().numpy()):
                 ans = dset.label2ans[l]

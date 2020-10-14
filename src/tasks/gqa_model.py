@@ -8,7 +8,7 @@ from lxrt.entry import LXRTEncoder
 from lxrt.modeling import BertLayerNorm, GeLU
 
 # Max length including <bos> and <eos>
-MAX_GQA_LENGTH = 100
+MAX_GQA_LENGTH = 150
 
 
 class GQAModel(nn.Module):
@@ -27,7 +27,7 @@ class GQAModel(nn.Module):
         )
         self.logit_fc.apply(self.lxrt_encoder.model.init_bert_weights)
 
-    def forward(self, feat, pos, sent):
+    def forward(self, vis_feat, vis_pos, sent, sem_queries):
         """
         b -- batch_size, o -- object_number, f -- visual_feature_size
 
@@ -37,7 +37,7 @@ class GQAModel(nn.Module):
         :param semantic_queries: (b,) Type -- list of string semantic queries corresponding to the sent
         :return: (b, num_answer) The logit of each answers.
         """
-        x = self.lxrt_encoder(sent, (feat, pos))
+        x = self.lxrt_encoder(sent, (vis_feat, vis_pos), semantic_queries=sem_queries)
         logit = self.logit_fc(x)
 
         return logit
