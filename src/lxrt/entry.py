@@ -33,7 +33,7 @@ class InputFeatures(object):
         self.segment_ids = segment_ids
 
 
-def convert_sents_to_features(sents, max_seq_length, tokenizer):
+def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_query=None):
     """Loads a data file into a list of `InputBatch`s."""
 
     features = []
@@ -106,7 +106,7 @@ class LXRTEncoder(nn.Module):
     def dim(self):
         return 768
 
-    def forward(self, sents, feats, visual_attention_mask=None):
+    def forward(self, sents, feats, visual_attention_mask=None, semantic_query=None):
         train_features = convert_sents_to_features(
             sents, self.max_seq_length, self.tokenizer)
 
