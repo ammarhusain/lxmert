@@ -562,7 +562,7 @@ class LXRTEncoder(nn.Module):
         for layer_module in self.x_layers:
             lang_feats, visn_feats = layer_module(lang_feats, lang_attention_mask,
                                                   visn_feats, visn_attention_mask)
-
+        print(f"hi {lang_feats.shape}  ... {visn_feats.shape}")
         return lang_feats, visn_feats
 
 
@@ -1009,6 +1009,7 @@ class LXRTFeatureExtraction(BertPreTrainedModel):
         feat_seq, pooled_output = self.bert(input_ids, token_type_ids, attention_mask,
                                             visual_feats=visual_feats,
                                             visual_attention_mask=visual_attention_mask)
+        print(f"modeling {feat_seq[0].shape} ... {feat_seq[1].shape} ... {pooled_output.shape}")
         if 'x' == self.mode:
             return pooled_output
         elif 'x' in self.mode and ('l' in self.mode or 'r' in self.mode):

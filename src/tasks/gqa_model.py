@@ -26,6 +26,7 @@ class GQAModel(nn.Module):
             nn.Linear(hid_dim * 2, num_answers)
         )
         self.logit_fc.apply(self.lxrt_encoder.model.init_bert_weights)
+        ##AH TODO: Add a masked LM head here
 
     def forward(self, vis_feat, vis_pos, sent, sem_queries):
         """
@@ -38,6 +39,8 @@ class GQAModel(nn.Module):
         :return: (b, num_answer) The logit of each answers.
         """
         x = self.lxrt_encoder(sent, (vis_feat, vis_pos), semantic_queries=sem_queries)
+        print(f"*****{x.shape}")
+        assert(False)
         logit = self.logit_fc(x)
 
         return logit

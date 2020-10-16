@@ -98,10 +98,10 @@ class LXRTEncoder(nn.Module):
             do_lower_case=True
         )
 
-        # Build LXRT Model
+       # Build LXRT Model
         self.model = VisualBertForLXRFeature.from_pretrained(
             "bert-base-uncased",
-            mode=mode
+            mode="lxr"
         )
 
         if args.from_scratch:
@@ -123,9 +123,11 @@ class LXRTEncoder(nn.Module):
         input_mask = torch.tensor([f.input_mask for f in train_features], dtype=torch.long).cuda()
         segment_ids = torch.tensor([f.segment_ids for f in train_features], dtype=torch.long).cuda()
 
+        ## AH TODO: Add a masked LM head here
         output = self.model(input_ids, segment_ids, input_mask,
                             visual_feats=vis_feats,
                             visual_attention_mask=visual_attention_mask)
+        print(f"entry {len(output)}")
         return output
 
     def save(self, path):

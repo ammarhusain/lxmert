@@ -14,6 +14,7 @@ from pretrain.qa_answer_table import load_lxmert_qa
 from tasks.gqa_model import GQAModel
 from tasks.gqa_data import GQADataset, GQATorchDataset, GQAEvaluator
 
+from pretrain.lxmert_pretrain import random_word
 
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
