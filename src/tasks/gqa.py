@@ -1,4 +1,4 @@
-# coding=utf-8
+  # coding=utf-8
 # Copyleft 2019 project LXRT.
 
 import os
@@ -12,12 +12,48 @@ from torch.utils.data.dataloader import DataLoader
 from param import args
 from pretrain.qa_answer_table import load_lxmert_qa
 from tasks.gqa_model import GQAModel
-from tasks.gqa_data import GQADataset, GQATorchDataset, GQAEvaluator
+from tasks.gqa_data import GQAInputExample, GQADataset, GQATorchDataset, GQAEvaluator
 
-from pretrain.lxmert_pretrain import random_word
 
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
+def random_word(tokens, tokenizer):
+    """
+    Masking some random tokens for Language Model task with probabilities as in the original BERT paper.
+    :param tokens: list of str, tokenized sentence.
+    :param tokenizer: Tokenizer, object used for tokenization (we need it's vocab here)
+    :return: (list of str, list of int), masked tokens and related labels for LM prediction
+    """
+    output_label = []
+
+    for i, token in enumerate(tokens):
+        prob = random.random()
+        # mask token with probability
+        ratio = args.word_mask_rate
+        if prob < ratio:
+            prob /= ratio
+
+            # 80% randomly change token to mask token
+            if prob < 0.8:
+                tokens[i] = "[MASK]"
+
+            # 10% randomly change token to random token
+            elif prob < 0.9:
+                tokens[i] = random.choice(list(tokenizer.vocab.items()))[0]
+
+            # -> rest 10% randomly keep current token
+
+            # append current token to output (we will predict these later)
+            try:
+                output_label.append(tokenizer.vocab[token])
+            except KeyError:
+                # For unknown words (should not occur with BPE vocab)
+                output_label.append(tokenizer.vocab["[UNK]"])
+        else:
+            # no masking token (will be ignored by loss function later)
+            output_label.append(-1)
+
+    return tokens, output_label
 
 def get_tuple(splits: str, bs:int, shuffle=False, drop_last=False) -> DataTuple:
     dset = GQADataset(splits)
@@ -26,6 +62,7 @@ def get_tuple(splits: str, bs:int, shuffle=False, drop_last=False) -> DataTuple:
     data_loader = DataLoader(
         tset, batch_size=bs,
         shuffle=shuffle, num_workers=args.num_workers,
+        collate_fn=lambda x: x,
         drop_last=drop_last, pin_memory=True
     )
 
@@ -77,6 +114,8 @@ class GQA:
 
         self.output = args.output
         os.makedirs(self.output, exist_ok=True)
+        print(f"&^&^&^&^&^&^&^ {args.mce_loss}")
+
 
     def train(self, train_tuple, eval_tuple):
         dset, loader, evaluator = train_tuple
@@ -85,13 +124,12 @@ class GQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, sem_query, target) in iter_wrapper(enumerate(loader)):
-
+            for i, gqa_example in iter_wrapper(enumerate(loader)):
                 self.model.train()
                 self.optim.zero_grad()
 
-                feats, boxes, target = feats.cuda(), boxes.cuda(), target.cuda()
-                logit = self.model(feats, boxes, sent, sem_query)
+                feats, boxes, target = gqa_example.feats.cuda(), gqa_example.boxes.cuda(), gqa_example.target.cuda()
+                logit = self.model(feats, boxes, gqa_example.sent, gqa_example.sem_query)
                 assert logit.dim() == target.dim() == 2
                 if args.mce_loss:
                     max_value, target = target.max(1)
@@ -105,7 +143,7 @@ class GQA:
                 self.optim.step()
 
                 score, label = logit.max(1)
-                for qid, l in zip(ques_id, label.cpu().numpy()):
+                for qid, l in zip(gqa_example.ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid] = ans
 
@@ -132,13 +170,12 @@ class GQA:
         self.model.eval()
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
-        for i, datum_tuple in enumerate(loader):
-            ques_id, feats, boxes, sent, sem_query = datum_tuple[:5]   # avoid handling target
+        for i, gqa_example in enumerate(loader):
             with torch.no_grad():
-                feats, boxes = feats.cuda(), boxes.cuda()
-                logit = self.model(feats, boxes, sent, sem_query)
+                feats, boxes = gqa_example.feats.cuda(), gqa_example.boxes.cuda()
+                logit = self.model(feats, boxes, gqa_example.sent, gqa_example.sem_query)
                 score, label = logit.max(1)
-                for qid, l in zip(ques_id, label.cpu().numpy()):
+                for qid, l in zip(gqa_example.ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid] = ans
         if dump is not None:
@@ -154,9 +191,10 @@ class GQA:
     def oracle_score(data_tuple):
         dset, loader, evaluator = data_tuple
         quesid2ans = {}
-        for i, (ques_id, feats, boxes, sent, sem_query, target) in enumerate(loader):
+        for i, gqa_examples in enumerate(loader):
+            target = torch.tensor([ex.target for ex in gqa_examples], dtype=torch.long).cuda()
             _, label = target.max(1)
-            for qid, l in zip(ques_id, label.cpu().numpy()):
+            for qid, l in zip(gqa_example.ques_id, label.cpu().numpy()):
                 ans = dset.label2ans[l]
                 quesid2ans[qid] = ans
         return evaluator.evaluate(quesid2ans)

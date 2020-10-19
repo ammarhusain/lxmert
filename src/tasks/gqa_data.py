@@ -17,6 +17,19 @@ TINY_IMG_NUM = 512
 FAST_IMG_NUM = 5000
 
 PATH_TO_DATA = "data/gqa/lxmert_data/"
+
+class GQAInputExample(object):
+    """A single training/test example for the language model."""
+    def __init__(self, ques_id, feats, boxes, ques, sem_query=None,
+                 sem_matched=None, target=None):
+        self.ques_id = ques_id
+        self.feats = feats
+        self.boxes = boxes
+        self.ques = ques
+        self.sem_query = sem_query
+        self.sem_matched = sem_matched
+        self.target = target
+        
 class GQADataset:
     """
     A GQA data example in json file:
@@ -98,6 +111,9 @@ class GQATorchDataset(Dataset):
         else:
             topk = -1
 
+        # NSP binary predict for question & functional program
+        self.task_nsp_qfpm = args.task_nsp_qfpm
+        
         # Loading detection features to img_data
         # Since images in train and valid both come from Visual Genome,
         # buffer the image loading to save memory.
@@ -127,8 +143,7 @@ class GQATorchDataset(Dataset):
         img_id = datum['img_id']
         ques_id = datum['question_id']
         ques = datum['sent']
-        sem_query = ""#datum['semantic_str']
-
+          
         # Get image info
         img_info = self.imgid2img[img_id]
         obj_num = img_info['num_boxes']
@@ -144,6 +159,11 @@ class GQATorchDataset(Dataset):
         np.testing.assert_array_less(boxes, 1+1e-5)
         np.testing.assert_array_less(-boxes, 0+1e-5)
 
+        data = GQAInputExample(ques_id, feats, boxes, ques)
+        
+        if 'semantic_str' in datum:
+          data.sem_query = datum['semantic_str']
+
         # Create target
         if 'label' in datum:
             label = datum['label']
@@ -151,11 +171,10 @@ class GQATorchDataset(Dataset):
             for ans, score in label.items():
                 if ans in self.raw_dataset.ans2label:
                     target[self.raw_dataset.ans2label[ans]] = score
-            return ques_id, feats, boxes, ques, sem_query, target
-        else:
-            return ques_id, feats, boxes, ques, sem_query
+            data.target = target
 
-
+        return data
+      
 class GQAEvaluator:
     def __init__(self, dataset: GQADataset):
         self.dataset = dataset
