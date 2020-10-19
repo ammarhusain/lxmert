@@ -84,6 +84,9 @@ def parse_args():
     parser.add_argument("--wordMaskRate", dest='word_mask_rate', default=0.15, type=float)
     parser.add_argument("--objMaskRate", dest='obj_mask_rate', default=0.15, type=float)
 
+    # GQA Finetuning Config
+    parser.add_argument("--taskNspQFPM", dest='task_nsp_qfpm', action='store_const', default=False, const=True)
+
     # Training configuration
     parser.add_argument("--multiGPU", action='store_const', default=False, const=True)
     parser.add_argument("--numWorkers", dest='num_workers', default=0)
