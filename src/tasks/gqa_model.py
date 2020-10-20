@@ -49,12 +49,10 @@ class GQAModel(nn.Module):
         :return: (b, num_answer) The logit of each answers.
         """
         x = self.lxrt_encoder(sent, (vis_feat, vis_pos), semantic_queries=sem_queries)
-        print(f"*****{x.shape}")
         logit = self.logit_fc(x)
 
         if self.task_nsp_qfpm is True:
           logit_nsp = self.fc_nsp_qfpm(x)
-          print(f"*****{logit.shape} .... {logit_nsp.shape}")
           return logit, logit_nsp
         
         return logit

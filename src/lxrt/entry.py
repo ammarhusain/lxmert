@@ -54,8 +54,8 @@ def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries
   
         # Account for [CLS] and [SEP] with "- 2"
         if len(tokens) > max_seq_length - 2:
-          assert False, f"Tokens are longer than max_seq_length {len(tokens)}"
-          #tokens_a = tokens_a[:(max_seq_length - 2)]
+          print(f"Tokens = {len(tokens)} are longer than max_seq_length {max_seq_length}")
+          tokens = tokens[:(max_seq_length - 2)]
                                  
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
@@ -127,7 +127,6 @@ class LXRTEncoder(nn.Module):
         output = self.model(input_ids, segment_ids, input_mask,
                             visual_feats=vis_feats,
                             visual_attention_mask=visual_attention_mask)
-        print(f"entry {len(output)}")
         return output
 
     def save(self, path):

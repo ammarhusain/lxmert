@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 
 from param import args
 from utils import load_obj_tsv
+import random
 
 # Load part of the dataset for fast checking.
 # Notice that here is the number of images instead of the number of data,
@@ -87,7 +88,7 @@ FIELDNAMES = ["img_id", "img_h", "img_w", "objects_id", "objects_conf",
               "attrs_id", "attrs_conf", "num_boxes", "boxes", "features"]
 """
 class GQATorchDataset(Dataset):
-    def __init__(self, dataset: GQADataset):
+    def __init__(self, dataset: GQADataset, skip_semantics=False):
         super().__init__()
         self.raw_dataset = dataset
 
@@ -97,7 +98,11 @@ class GQATorchDataset(Dataset):
             topk = FAST_IMG_NUM
         else:
             topk = -1
-
+            
+        # NSP binary predict for question & functional program
+        self.task_nsp_qfpm = args.task_nsp_qfpm
+        self.skip_semantics = skip_semantics
+        
         # Loading detection features to img_data
         # Since images in train and valid both come from Visual Genome,
         # buffer the image loading to save memory.
@@ -127,8 +132,17 @@ class GQATorchDataset(Dataset):
         img_id = datum['img_id']
         ques_id = datum['question_id']
         ques = datum['sent']
-        sem_query = ""#datum['semantic_str']
-
+        sem_query = ""
+        is_matched = 0
+        if 'semantic_str' in datum and self.skip_semantics is False:
+          if self.task_nsp_qfpm:
+            if random.random() < 0.5:
+                other_datum = self.data[random.randint(0, len(self.data)-1)]
+                sem_query = datum['semantic_str']
+            else:
+                sem_query = datum['semantic_str']
+                is_matched = 1
+                              
         # Get image info
         img_info = self.imgid2img[img_id]
         obj_num = img_info['num_boxes']
@@ -151,9 +165,9 @@ class GQATorchDataset(Dataset):
             for ans, score in label.items():
                 if ans in self.raw_dataset.ans2label:
                     target[self.raw_dataset.ans2label[ans]] = score
-            return ques_id, feats, boxes, ques, sem_query, target
+            return ques_id, feats, boxes, ques, sem_query, is_matched, target
         else:
-            return ques_id, feats, boxes, ques, sem_query
+            return ques_id, feats, boxes, ques, sem_query, is_matched
 
 
 class GQAEvaluator:

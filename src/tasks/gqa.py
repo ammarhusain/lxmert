@@ -14,14 +14,12 @@ from pretrain.qa_answer_table import load_lxmert_qa
 from tasks.gqa_model import GQAModel
 from tasks.gqa_data import GQADataset, GQATorchDataset, GQAEvaluator
 
-from pretrain.lxmert_pretrain import random_word
-
 DataTuple = collections.namedtuple("DataTuple", 'dataset loader evaluator')
 
 
-def get_tuple(splits: str, bs:int, shuffle=False, drop_last=False) -> DataTuple:
+def get_tuple(splits: str, bs:int, shuffle=False, drop_last=False, skip_semantics=False) -> DataTuple:
     dset = GQADataset(splits)
-    tset = GQATorchDataset(dset)
+    tset = GQATorchDataset(dset, skip_semantics)
     evaluator = GQAEvaluator(dset)
     data_loader = DataLoader(
         tset, batch_size=bs,
@@ -41,7 +39,7 @@ class GQA:
             valid_bsize = 2048 if args.multiGPU else 512
             self.valid_tuple = get_tuple(
                 args.valid, bs=valid_bsize,
-                shuffle=False, drop_last=False
+                shuffle=False, drop_last=False, skip_semantics=True
             )
         else:
             self.valid_tuple = None
@@ -85,26 +83,30 @@ class GQA:
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, sem_query, target) in iter_wrapper(enumerate(loader)):
+            for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
 
                 self.model.train()
                 self.optim.zero_grad()
 
-                feats, boxes, target = feats.cuda(), boxes.cuda(), target.cuda()
-                logit = self.model(feats, boxes, sent, sem_query)
-                assert logit.dim() == target.dim() == 2
+                feats, boxes, sem_matched, target = feats.cuda(), boxes.cuda(), sem_matched.cuda(), target.cuda()
+                logit_qa, logit_nsp_qfpm = self.model(feats, boxes, sent, sem_query)
+                assert logit_qa.dim() == target.dim() == 2
                 if args.mce_loss:
                     max_value, target = target.max(1)
-                    loss = self.mce_loss(logit, target) * logit.size(1)
+                    loss = self.mce_loss(logit_qa, target) * logit_qa.size(1)
                 else:
-                    loss = self.bce_loss(logit, target)
-                    loss = loss * logit.size(1)
+                    loss = self.bce_loss(logit_qa, target)
+                    loss = loss * logit_qa.size(1)
+                    
+                if args.task_nsp_qfpm:
+                  nsp_qfpm_loss = self.mce_loss(logit_nsp_qfpm, sem_matched) 
+                  loss += (nsp_qfpm_loss * logit_qa.size(1))
 
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
                 self.optim.step()
 
-                score, label = logit.max(1)
+                score, label = logit_qa.max(1)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid] = ans
@@ -133,11 +135,11 @@ class GQA:
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
         for i, datum_tuple in enumerate(loader):
-            ques_id, feats, boxes, sent, sem_query = datum_tuple[:5]   # avoid handling target
+            ques_id, feats, boxes, sent, sem_query, sem_matched = datum_tuple[:6]   # avoid handling target
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
-                logit = self.model(feats, boxes, sent, sem_query)
-                score, label = logit.max(1)
+                logit_qa, logit_nsp_qfpm = self.model(feats, boxes, sent, sem_query)
+                score, label = logit_qa.max(1)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid] = ans
@@ -154,7 +156,7 @@ class GQA:
     def oracle_score(data_tuple):
         dset, loader, evaluator = data_tuple
         quesid2ans = {}
-        for i, (ques_id, feats, boxes, sent, sem_query, target) in enumerate(loader):
+        for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in enumerate(loader):
             _, label = target.max(1)
             for qid, l in zip(ques_id, label.cpu().numpy()):
                 ans = dset.label2ans[l]
