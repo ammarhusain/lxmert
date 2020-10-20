@@ -5,10 +5,10 @@ import torch.nn as nn
 
 from param import args
 from lxrt.entry import LXRTEncoder
-from lxrt.modeling import BertLayerNorm, GeLU
+from lxrt.modeling import BertLayerNorm, GeLU, BertPreTrainingHeads, BertConfig
 
 # Max length including <bos> and <eos>
-MAX_GQA_LENGTH = 150
+MAX_GQA_LENGTH = 100
 
 
 class GQAModel(nn.Module):
@@ -16,7 +16,8 @@ class GQAModel(nn.Module):
         super().__init__()
         self.lxrt_encoder = LXRTEncoder(
             args,
-            max_seq_length=MAX_GQA_LENGTH
+            max_seq_length=MAX_GQA_LENGTH,
+            mode='xl'
         )
         hid_dim = self.lxrt_encoder.dim
         self.logit_fc = nn.Sequential(
@@ -30,10 +31,8 @@ class GQAModel(nn.Module):
         self.task_nsp_qfpm = task_nsp_qfpm
 
         if self.task_nsp_qfpm is True:
-          self.fc_nsp_qfpm = nn.Sequential(
-              nn.Linear(hid_dim, 2),
-          )
-          self.fc_nsp_qfpm.apply(self.lxrt_encoder.model.init_bert_weights)
+          self.qfpm = BertPreTrainingHeads(BertConfig(vocab_size_or_config_json_file = 30522),
+                                           self.lxrt_encoder.model.bert.embeddings.word_embeddings.weight)
         
     def forward(self, vis_feat, vis_pos, sent, sem_queries):
         """
@@ -45,12 +44,12 @@ class GQAModel(nn.Module):
         :param semantic_queries: (b,) Type -- list of string semantic queries corresponding to the sent
         :return: (b, num_answer) The logit of each answers.
         """
-        x = self.lxrt_encoder(sent, (vis_feat, vis_pos), semantic_queries=sem_queries)
-        logit = self.logit_fc(x)
+        (lang_feats, visn_feats), pooled_output = self.lxrt_encoder(sent, (vis_feat, vis_pos), semantic_queries=sem_queries)
+        logit = self.logit_fc(pooled_output)
 
         if self.task_nsp_qfpm is True:
-          logit_nsp = self.fc_nsp_qfpm(x)
-          return logit, logit_nsp
+          lang_prediction_scores, nsp_prediction_score = self.qfpm(lang_feats, pooled_output)
+          return logit, nsp_prediction_score
         
         return logit
 

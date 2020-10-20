@@ -21,16 +21,55 @@ import torch
 import torch.nn as nn
 
 from lxrt.tokenization import BertTokenizer
-from lxrt.modeling import LXRTFeatureExtraction as VisualBertForLXRFeature, VISUAL_CONFIG
+from lxrt.modeling import LXRTFeatureExtraction, VISUAL_CONFIG
 
 
 class InputFeatures(object):
     """A single set of features of data."""
 
-    def __init__(self, input_ids, input_mask, segment_ids):
+    def __init__(self, input_ids, input_mask, segment_ids, masked_labels):
         self.input_ids = input_ids
         self.input_mask = input_mask
         self.segment_ids = segment_ids
+        self.masked_labels = masked_labels
+
+def random_word(tokens, tokenizer):
+    """
+    Masking some random tokens for Language Model task with probabilities as in the original BERT paper.
+    :param tokens: list of str, tokenized sentence.
+    :param tokenizer: Tokenizer, object used for tokenization (we need it's vocab here)
+    :return: (list of str, list of int), masked tokens and related labels for LM prediction
+    """
+    output_label = []
+
+    for i, token in enumerate(tokens):
+        prob = random.random()
+        # mask token with probability
+        ratio = args.word_mask_rate
+        if prob < ratio:
+            prob /= ratio
+
+            # 80% randomly change token to mask token
+            if prob < 0.8:
+                tokens[i] = "[MASK]"
+
+            # 10% randomly change token to random token
+            elif prob < 0.9:
+                tokens[i] = random.choice(list(tokenizer.vocab.items()))[0]
+
+            # -> rest 10% randomly keep current token
+
+            # append current token to output (we will predict these later)
+            try:
+                output_label.append(tokenizer.vocab[token])
+            except KeyError:
+                # For unknown words (should not occur with BPE vocab)
+                output_label.append(tokenizer.vocab["[UNK]"])
+        else:
+            # no masking token (will be ignored by loss function later)
+            output_label.append(-1)
+
+    return tokens, output_label
 
 
 def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries=None):
@@ -52,11 +91,12 @@ def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries
           segment_ids_b = [1] * (len(tokens_b) + 1)
           segment_ids += segment_ids_b
   
-        # Account for [CLS] and [SEP] with "- 2"
-        if len(tokens) > max_seq_length - 2:
+        if len(tokens) > max_seq_length:
           print(f"Tokens = {len(tokens)} are longer than max_seq_length {max_seq_length}")
-          tokens = tokens[:(max_seq_length - 2)]
-                                 
+          tokens = tokens[:max_seq_length]
+          segment_ids = segment_ids[:max_seq_length]
+        
+        masked_labels = [-1]*len(tokens)
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
@@ -76,7 +116,8 @@ def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries
         features.append(
                 InputFeatures(input_ids=input_ids,
                               input_mask=input_mask,
-                              segment_ids=segment_ids))
+                              segment_ids=segment_ids,
+                              masked_labels=masked_labels))
     return features
 
 
@@ -99,7 +140,7 @@ class LXRTEncoder(nn.Module):
         )
 
        # Build LXRT Model
-        self.model = VisualBertForLXRFeature.from_pretrained(
+        self.model = LXRTFeatureExtraction.from_pretrained(
             "bert-base-uncased",
             mode=mode
         )
@@ -123,7 +164,6 @@ class LXRTEncoder(nn.Module):
         input_mask = torch.tensor([f.input_mask for f in train_features], dtype=torch.long).cuda()
         segment_ids = torch.tensor([f.segment_ids for f in train_features], dtype=torch.long).cuda()
 
-        ## AH TODO: Add a masked LM head here
         output = self.model(input_ids, segment_ids, input_mask,
                             visual_feats=vis_feats,
                             visual_attention_mask=visual_attention_mask)

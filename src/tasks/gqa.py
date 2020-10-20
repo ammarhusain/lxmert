@@ -98,7 +98,7 @@ class GQA:
               _, logit_nsp_qfpm = self.model(feats, boxes, sent, sem_query)
 
 
-              nsp_qfpm_loss =  1000.0 * self.mce_loss(logit_nsp_qfpm, sem_matched) 
+              nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched) 
               loss = nsp_qfpm_loss
               loss.backward()
               nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
