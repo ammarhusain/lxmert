@@ -70,6 +70,11 @@ class GQA:
                                   lr=args.lr,
                                   warmup=0.1,
                                   t_total=t_total)
+            if args.task_nsp_qfpm:
+              self.task_optim = BertAdam(list(self.model.parameters()),
+                                    lr=args.lr,
+                                    warmup=0.1,
+                                    t_total=t_total)
         else:
             self.optim = args.optimizer(list(self.model.parameters()), args.lr)
 
@@ -80,6 +85,28 @@ class GQA:
         dset, loader, evaluator = train_tuple
         iter_wrapper = (lambda x: tqdm(x, total=len(loader))) if args.tqdm else (lambda x: x)
 
+        # Pre train the NSP head
+        if args.task_nsp_qfpm:
+          print(f"Pretraining for {args.epochs} epochs")
+          for epoch in range(args.epochs):          
+            pretrain_loss = 0
+            for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
+              self.model.train()
+              self.optim.zero_grad()
+
+              feats, boxes, sem_matched, target = feats.cuda(), boxes.cuda(), sem_matched.cuda(), target.cuda()
+              _, logit_nsp_qfpm = self.model(feats, boxes, sent, sem_query)
+
+
+              nsp_qfpm_loss =  1000.0 * self.mce_loss(logit_nsp_qfpm, sem_matched) 
+              loss = nsp_qfpm_loss
+              loss.backward()
+              nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
+              self.task_optim.step()
+              pretrain_loss += nsp_qfpm_loss.detach()
+
+            print(f"NSP loss for epoch = {pretrain_loss}")      
+            
         best_valid = 0.
         for epoch in range(args.epochs):
             quesid2ans = {}
@@ -89,7 +116,7 @@ class GQA:
                 self.optim.zero_grad()
 
                 feats, boxes, sem_matched, target = feats.cuda(), boxes.cuda(), sem_matched.cuda(), target.cuda()
-                logit_qa, logit_nsp_qfpm = self.model(feats, boxes, sent, sem_query)
+                logit_qa, _ = self.model(feats, boxes, sent, sem_query)
                 assert logit_qa.dim() == target.dim() == 2
                 if args.mce_loss:
                     max_value, target = target.max(1)
@@ -97,10 +124,6 @@ class GQA:
                 else:
                     loss = self.bce_loss(logit_qa, target)
                     loss = loss * logit_qa.size(1)
-                    
-                if args.task_nsp_qfpm:
-                  nsp_qfpm_loss = self.mce_loss(logit_nsp_qfpm, sem_matched) 
-                  loss += (nsp_qfpm_loss * logit_qa.size(1))
 
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
