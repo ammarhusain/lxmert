@@ -12,7 +12,7 @@ MAX_GQA_LENGTH = 100
 
 
 class GQAModel(nn.Module):
-    def __init__(self, num_answers, task_nsp_qfpm=True):
+    def __init__(self, num_answers):
         super().__init__()
         self.lxrt_encoder = LXRTEncoder(
             args,
@@ -27,10 +27,8 @@ class GQAModel(nn.Module):
             nn.Linear(hid_dim * 2, num_answers)
         )
         self.logit_fc.apply(self.lxrt_encoder.model.init_bert_weights)
-        ##AH TODO: Add a masked LM head here
-        self.task_nsp_qfpm = task_nsp_qfpm
 
-        if self.task_nsp_qfpm is True:
+        if args.task_nsp_qfpm or args.task_mlm_qfpm:
           self.qfpm = BertPreTrainingHeads(BertConfig(vocab_size_or_config_json_file = 30522),
                                            self.lxrt_encoder.model.bert.embeddings.word_embeddings.weight)
         
@@ -44,12 +42,12 @@ class GQAModel(nn.Module):
         :param semantic_queries: (b,) Type -- list of string semantic queries corresponding to the sent
         :return: (b, num_answer) The logit of each answers.
         """
-        (lang_feats, visn_feats), pooled_output = self.lxrt_encoder(sent, (vis_feat, vis_pos), semantic_queries=sem_queries)
+        ((lang_feats, visn_feats), pooled_output), masked_labels = self.lxrt_encoder(sent, (vis_feat, vis_pos), semantic_queries=sem_queries)
         logit = self.logit_fc(pooled_output)
 
-        if self.task_nsp_qfpm is True:
+        if args.task_nsp_qfpm or args.task_mlm_qfpm:
           lang_prediction_scores, nsp_prediction_score = self.qfpm(lang_feats, pooled_output)
-          return logit, nsp_prediction_score
+          return logit, nsp_prediction_score, lang_prediction_scores, masked_labels
         
         return logit
 

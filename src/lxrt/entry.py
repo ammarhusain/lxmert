@@ -16,12 +16,14 @@
 # limitations under the License.
 
 import os
+import random
 
 import torch
 import torch.nn as nn
 
 from lxrt.tokenization import BertTokenizer
 from lxrt.modeling import LXRTFeatureExtraction, VISUAL_CONFIG
+from param import args
 
 
 class InputFeatures(object):
@@ -43,6 +45,11 @@ def random_word(tokens, tokenizer):
     output_label = []
 
     for i, token in enumerate(tokens):
+        # Do not mask CLS or SEP tokens
+        if tokens[i] is "[CLS]" or tokens[i] is "[SEP]":
+          output_label.append(-1)
+          continue
+          
         prob = random.random()
         # mask token with probability
         ratio = args.word_mask_rate
@@ -92,11 +99,13 @@ def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries
           segment_ids += segment_ids_b
   
         if len(tokens) > max_seq_length:
-          print(f"Tokens = {len(tokens)} are longer than max_seq_length {max_seq_length}")
+          #print(f"Tokens = {len(tokens)} are longer than max_seq_length {max_seq_length}")
           tokens = tokens[:max_seq_length]
           segment_ids = segment_ids[:max_seq_length]
         
-        masked_labels = [-1]*len(tokens)
+        masked_labels = [-1] * len(tokens)
+        if args.task_mlm_qfpm:
+          tokens, masked_labels = random_word(tokens, tokenizer)
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
@@ -105,13 +114,17 @@ def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries
 
         # Zero-pad up to the sequence length.
         padding = [0] * (max_seq_length - len(input_ids))
+        neg_one_padding = [-1] * len(padding)
+
         input_ids += padding
         input_mask += padding
         segment_ids += padding
-
+        masked_labels += neg_one_padding
+        
         assert len(input_ids) == max_seq_length
         assert len(input_mask) == max_seq_length
         assert len(segment_ids) == max_seq_length
+        assert len(masked_labels) == max_seq_length
 
         features.append(
                 InputFeatures(input_ids=input_ids,
@@ -148,6 +161,7 @@ class LXRTEncoder(nn.Module):
         if args.from_scratch:
             print("initializing all the weights")
             self.model.apply(self.model.init_bert_weights)
+          
 
     def multi_gpu(self):
         self.model = nn.DataParallel(self.model)
@@ -163,11 +177,13 @@ class LXRTEncoder(nn.Module):
         input_ids = torch.tensor([f.input_ids for f in train_features], dtype=torch.long).cuda()
         input_mask = torch.tensor([f.input_mask for f in train_features], dtype=torch.long).cuda()
         segment_ids = torch.tensor([f.segment_ids for f in train_features], dtype=torch.long).cuda()
+        masked_labels = torch.tensor([f.masked_labels for f in train_features], dtype=torch.long).cuda()
 
         output = self.model(input_ids, segment_ids, input_mask,
                             visual_feats=vis_feats,
                             visual_attention_mask=visual_attention_mask)
-        return output
+        
+        return output, masked_labels
 
     def save(self, path):
         torch.save(self.model.state_dict(),

@@ -86,28 +86,45 @@ class GQA:
         iter_wrapper = (lambda x: tqdm(x, total=len(loader))) if args.tqdm else (lambda x: x)
 
         # Pre train the NSP head
-        if args.task_nsp_qfpm:
+        if args.task_nsp_qfpm or args.task_mlm_qfpm:
           print(f"Pretraining for {args.epochs} epochs")
           for epoch in range(args.epochs):          
-            pretrain_loss = 0
+            epoch_pretrain_loss = 0
+            epoch_nsp_loss = 0
+            epoch_mlm_loss = 0
             for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
               self.model.train()
-              self.optim.zero_grad()
+              self.task_optim.zero_grad()
 
               feats, boxes, sem_matched, target = feats.cuda(), boxes.cuda(), sem_matched.cuda(), target.cuda()
-              _, logit_nsp_qfpm = self.model(feats, boxes, sent, sem_query)
-
-
-              nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched) 
-              loss = nsp_qfpm_loss
+              _, logit_nsp_qfpm, logit_mlm_qfpm, masked_lang_labels = self.model(feats, boxes, sent, sem_query)
+              
+              loss = 0
+              if args.task_nsp_qfpm:
+                nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched) 
+                loss += nsp_qfpm_loss
+                epoch_nsp_loss += nsp_qfpm_loss.detach()
+              
+              if args.task_mlm_qfpm:
+                # masked_lang_labels: [batch, max_length], logit_mlm_qfpm: [batch, max_length, vocab_size]
+                vocab_size = logit_mlm_qfpm.shape[2]
+                masked_lm_loss = self.mce_loss(
+                  logit_mlm_qfpm.view(-1, vocab_size),
+                  masked_lang_labels.view(-1)
+                )
+                loss += masked_lm_loss                
+                epoch_mlm_loss += masked_lm_loss.detach()
+              
               loss.backward()
               nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
               self.task_optim.step()
-              pretrain_loss += nsp_qfpm_loss.detach()
+              epoch_pretrain_loss += loss.detach()
 
-            print(f"NSP loss for epoch = {pretrain_loss}")      
+            print(f"Total loss for epoch = {epoch_pretrain_loss} ... NSP = {epoch_nsp_loss} ... MLM = {epoch_mlm_loss}")      
             
         best_valid = 0.
+        args.task_nsp_qfpm = False
+        args.task_mlm_qfpm = False
         for epoch in range(args.epochs):
             quesid2ans = {}
             for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
@@ -116,7 +133,7 @@ class GQA:
                 self.optim.zero_grad()
 
                 feats, boxes, sem_matched, target = feats.cuda(), boxes.cuda(), sem_matched.cuda(), target.cuda()
-                logit_qa, _ = self.model(feats, boxes, sent, sem_query)
+                logit_qa = self.model(feats, boxes, sent, sem_query)
                 assert logit_qa.dim() == target.dim() == 2
                 if args.mce_loss:
                     max_value, target = target.max(1)
@@ -161,7 +178,7 @@ class GQA:
             ques_id, feats, boxes, sent, sem_query, sem_matched = datum_tuple[:6]   # avoid handling target
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
-                logit_qa, logit_nsp_qfpm = self.model(feats, boxes, sent, sem_query)
+                logit_qa = self.model(feats, boxes, sent, sem_query)
                 score, label = logit_qa.max(1)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
