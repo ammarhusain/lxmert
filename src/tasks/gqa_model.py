@@ -31,10 +31,7 @@ class GQAModel(nn.Module):
 
         if self.task_nsp_qfpm is True:
           self.fc_nsp_qfpm = nn.Sequential(
-              nn.Linear(hid_dim, hid_dim * 2),
-              GeLU(),
-              BertLayerNorm(hid_dim * 2, eps=1e-12),
-              nn.Linear(hid_dim * 2, 2)
+              nn.Linear(hid_dim, 2),
           )
           self.fc_nsp_qfpm.apply(self.lxrt_encoder.model.init_bert_weights)
         
