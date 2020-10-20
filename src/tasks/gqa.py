@@ -111,7 +111,7 @@ class GQA:
         for epoch in range(args.epochs):
             quesid2ans = {}
             for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
-
+                sem_query = [''] * len(sem_query)
                 self.model.train()
                 self.optim.zero_grad()
 
