@@ -127,12 +127,12 @@ class GQA:
         args.task_mlm_qfpm = False
         for epoch in range(args.epochs):
             quesid2ans = {}
-            for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
-                sem_query = [''] * len(sem_query)
+            for i, (ques_id, feats, boxes, sent, sem_query, _, target) in iter_wrapper(enumerate(loader)):
+                #sem_query = [''] * len(sem_query)
                 self.model.train()
                 self.optim.zero_grad()
 
-                feats, boxes, sem_matched, target = feats.cuda(), boxes.cuda(), sem_matched.cuda(), target.cuda()
+                feats, boxes, target = feats.cuda(), boxes.cuda(), target.cuda()
                 logit_qa = self.model(feats, boxes, sent, sem_query)
                 assert logit_qa.dim() == target.dim() == 2
                 if args.mce_loss:
@@ -175,7 +175,7 @@ class GQA:
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
         for i, datum_tuple in enumerate(loader):
-            ques_id, feats, boxes, sent, sem_query, sem_matched = datum_tuple[:6]   # avoid handling target
+            ques_id, feats, boxes, sent, sem_query = datum_tuple[:5]   # avoid handling target
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
                 logit_qa = self.model(feats, boxes, sent, sem_query)
