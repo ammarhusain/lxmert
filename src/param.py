@@ -87,6 +87,7 @@ def parse_args():
     # GQA Finetuning Config
     parser.add_argument("--taskNspQFPM", dest='task_nsp_qfpm', action='store_const', default=False, const=True)
     parser.add_argument("--taskMlmQFPM", dest='task_mlm_qfpm', action='store_const', default=False, const=True)
+    parser.add_argument("--noFPTrain", dest='no_fp_train', action='store_const', default=False, const=True)
 
     # Training configuration
     parser.add_argument("--multiGPU", action='store_const', default=False, const=True)

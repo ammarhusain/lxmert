@@ -33,14 +33,12 @@ def get_tuple(splits: str, bs:int, shuffle=False, drop_last=False, skip_semantic
 class GQA:
     def __init__(self):
         self.train_tuple = get_tuple(
-            args.train, bs=args.batch_size, shuffle=True, drop_last=True
-        )
+            args.train, bs=args.batch_size, shuffle=True, drop_last=True)
         if args.valid != "":
             valid_bsize = 2048 if args.multiGPU else 512
             self.valid_tuple = get_tuple(
                 args.valid, bs=valid_bsize,
-                shuffle=False, drop_last=False, skip_semantics=True
-            )
+                shuffle=False, drop_last=False, skip_semantics=True)
         else:
             self.valid_tuple = None
 
@@ -125,10 +123,13 @@ class GQA:
         best_valid = 0.
         args.task_nsp_qfpm = False
         args.task_mlm_qfpm = False
+        if args.no_fp_train is True:
+          loader.dataset.skip_semantics = True
         for epoch in range(args.epochs):
             quesid2ans = {}
             for i, (ques_id, feats, boxes, sent, sem_query, _, target) in iter_wrapper(enumerate(loader)):
-                #sem_query = [''] * len(sem_query)
+#                 sb = [q + ' ** ' + sq for q, sq in zip(sent, sem_query)]
+#                 print(sb[:10])
                 self.model.train()
                 self.optim.zero_grad()
 
@@ -230,13 +231,13 @@ if __name__ == "__main__":
         if 'submit' in args.test:
             gqa.predict(
                 get_tuple(args.test, bs=args.batch_size,
-                          shuffle=False, drop_last=False),
+                          shuffle=False, drop_last=False, skip_semantics=True),
                 dump=os.path.join(args.output, 'submit_predict.json')
             )
         if 'testdev' in args.test:
             result = gqa.evaluate(
                 get_tuple('testdev', bs=args.batch_size,
-                          shuffle=False, drop_last=False),
+                          shuffle=False, drop_last=False, skip_semantics=True),
                 dump=os.path.join(args.output, 'testdev_predict.json')
             )
             print(result)

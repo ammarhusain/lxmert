@@ -135,13 +135,14 @@ class GQATorchDataset(Dataset):
         sem_query = ""
         is_matched = 0
         if 'semantic_str' in datum and self.skip_semantics is False:
+          sem_query = datum['semantic_str']
+          is_matched = 1
           if self.task_nsp_qfpm:
             if random.random() < 0.5:
                 other_datum = self.data[random.randint(0, len(self.data)-1)]
                 sem_query = datum['semantic_str']
-            else:
-                sem_query = datum['semantic_str']
-                is_matched = 1
+                is_matched = 0
+
                               
         # Get image info
         img_info = self.imgid2img[img_id]

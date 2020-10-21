@@ -6,3 +6,7 @@
 data/gqa/questions/
 data/gqa/images/
 data/gqa/lxmert_data/vg_gqa_imfeat/
+data/gqa/lxmert_data/submit.json
+data/gqa/lxmert_data/testdev.json
+data/gqa/lxmert_data/train.json
+data/gqa/lxmert_data/valid.json
