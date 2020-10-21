@@ -68,7 +68,7 @@ class GQA:
                                   lr=args.lr,
                                   warmup=0.1,
                                   t_total=t_total)
-            if args.task_nsp_qfpm:
+            if args.task_nsp_qfpm or args.task_mlm_qfpm:
               self.task_optim = BertAdam(list(self.model.parameters()),
                                     lr=args.lr,
                                     warmup=0.1,
@@ -85,11 +85,12 @@ class GQA:
 
         # Pre train the NSP head
         if args.task_nsp_qfpm or args.task_mlm_qfpm:
-          print(f"Pretraining for {args.epochs} epochs")
+          print(f"********* Pretraining for {args.epochs} epochs *********")
           for epoch in range(args.epochs):          
             epoch_pretrain_loss = 0
             epoch_nsp_loss = 0
             epoch_mlm_loss = 0
+            epoch_nsp_avg = []
             for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
               self.model.train()
               self.task_optim.zero_grad()
@@ -99,10 +100,13 @@ class GQA:
               
               loss = 0
               if args.task_nsp_qfpm:
-                nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched) 
+                nsp_qfpm_loss =  10*self.mce_loss(logit_nsp_qfpm, sem_matched) 
                 loss += nsp_qfpm_loss
                 epoch_nsp_loss += nsp_qfpm_loss.detach()
-              
+                _, idx = torch.max(logit_nsp_qfpm, 1)
+                diff = torch.abs(sem_matched - idx)
+                epoch_nsp_avg.append(torch.sum(diff).item()/sem_matched.shape[0])
+
               if args.task_mlm_qfpm:
                 # masked_lang_labels: [batch, max_length], logit_mlm_qfpm: [batch, max_length, vocab_size]
                 vocab_size = logit_mlm_qfpm.shape[2]
@@ -119,12 +123,15 @@ class GQA:
               epoch_pretrain_loss += loss.detach()
 
             print(f"Total loss for epoch = {epoch_pretrain_loss} ... NSP = {epoch_nsp_loss} ... MLM = {epoch_mlm_loss}")      
-            
+            print(f"NSP: {epoch_nsp_avg} ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
+            23
         best_valid = 0.
         args.task_nsp_qfpm = False
         args.task_mlm_qfpm = False
         if args.no_fp_train is True:
           loader.dataset.skip_semantics = True
+
+        print(f"********* Finetuning for {args.epochs} epochs *********")
         for epoch in range(args.epochs):
             quesid2ans = {}
             for i, (ques_id, feats, boxes, sent, sem_query, _, target) in iter_wrapper(enumerate(loader)):
