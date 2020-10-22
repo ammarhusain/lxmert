@@ -91,7 +91,7 @@ class GQA:
         print(f"********* Finetuning for {args.epochs} epochs *********")
         for epoch in range(args.epochs):
             quesid2ans = {}
-            epoch_task_loss = 0
+            epoch_pretrain_loss = 0
             epoch_nsp_loss = 0
             epoch_mlm_loss = 0
             epoch_nsp_avg = []
@@ -137,6 +137,8 @@ class GQA:
                 nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
                 self.optim.step()
 
+                epoch_pretrain_loss += loss.detach()
+                
                 score, label = logit_qa.max(1)
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
@@ -167,6 +169,10 @@ class GQA:
         self.model.eval()
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
+        orig_args_task_nsp_qfpm = args.task_nsp_qfpm
+        orig_args_task_mlm_qfpm = args.task_mlm_qfpm
+        args.task_nsp_qfpm = False
+        args.task_mlm_qfpm = False
         iter_wrapper = (lambda x: tqdm(x, total=len(loader))) if args.tqdm else (lambda x: x)
         for i, datum_tuple in iter_wrapper(enumerate(loader)):
             ques_id, feats, boxes, sent, sem_query = datum_tuple[:5]   # avoid handling target
@@ -177,6 +183,8 @@ class GQA:
                 for qid, l in zip(ques_id, label.cpu().numpy()):
                     ans = dset.label2ans[l]
                     quesid2ans[qid] = ans
+        args.task_nsp_qfpm = orig_args_task_nsp_qfpm
+        args.task_mlm_qfpm = orig_args_task_mlm_qfpm
         if dump is not None:
             evaluator.dump_result(quesid2ans, dump)
         return quesid2ans
