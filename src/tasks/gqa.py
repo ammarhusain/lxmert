@@ -100,7 +100,7 @@ class GQA:
               
               loss = 0
               if args.task_nsp_qfpm:
-                nsp_qfpm_loss =  10*self.mce_loss(logit_nsp_qfpm, sem_matched) 
+                nsp_qfpm_loss =  10000000000000*self.mce_loss(logit_nsp_qfpm, sem_matched) 
                 loss += nsp_qfpm_loss
                 epoch_nsp_loss += nsp_qfpm_loss.detach()
                 _, idx = torch.max(logit_nsp_qfpm, 1)
