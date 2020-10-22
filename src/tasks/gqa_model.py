@@ -49,7 +49,7 @@ class GQAModel(nn.Module):
         first_raw_token = lang_feats[:,0,:]
 
         if args.task_nsp_qfpm or args.task_mlm_qfpm:
-          lang_prediction_scores, nsp_prediction_score = self.qfpm(lang_feats, first_raw_token)
+          lang_prediction_scores, nsp_prediction_score = self.qfpm(lang_feats, pooled_output)
           return logit, nsp_prediction_score, lang_prediction_scores, masked_labels
         
         return logit

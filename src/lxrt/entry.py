@@ -118,9 +118,9 @@ def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries
 
         #print(f'{tokenizer.convert_tokens_to_ids(["[CLS]"])}  &&&&^&^&^&^&^&^&^ ')
         input_ids += padding
-        input_ids[-1] = 101 # ["CLS"] token id
+        #input_ids[-1] = 101 # ["CLS"] token id
         input_mask += padding
-        input_mask[-1] = 1
+        #input_mask[-1] = 1
         segment_ids += padding
         masked_labels += neg_one_padding
         
