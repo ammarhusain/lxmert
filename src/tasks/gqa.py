@@ -100,8 +100,8 @@ class GQA:
               
               loss = 0
               if args.task_nsp_qfpm:
-                nsp_qfpm_loss =  10000000000000*self.mce_loss(logit_nsp_qfpm, sem_matched) 
-                loss += nsp_qfpm_loss
+                nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched) 
+                loss += 100*nsp_qfpm_loss # multiply to equally weight the MLM with NSP loss
                 epoch_nsp_loss += nsp_qfpm_loss.detach()
                 _, idx = torch.max(logit_nsp_qfpm, 1)
                 diff = torch.abs(sem_matched - idx)
@@ -124,6 +124,7 @@ class GQA:
 
             print(f"Total loss for epoch = {epoch_pretrain_loss} ... NSP = {epoch_nsp_loss} ... MLM = {epoch_mlm_loss}")      
             print(f"NSP: {epoch_nsp_avg} ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
+            print(f"NSP: average of average ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
             
         best_valid = 0.
         args.task_nsp_qfpm = False
