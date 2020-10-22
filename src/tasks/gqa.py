@@ -124,7 +124,7 @@ class GQA:
 
             print(f"Total loss for epoch = {epoch_pretrain_loss} ... NSP = {epoch_nsp_loss} ... MLM = {epoch_mlm_loss}")      
             print(f"NSP: {epoch_nsp_avg} ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
-            23
+            
         best_valid = 0.
         args.task_nsp_qfpm = False
         args.task_mlm_qfpm = False
