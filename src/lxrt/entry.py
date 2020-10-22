@@ -118,6 +118,7 @@ def convert_sents_to_features(sents, max_seq_length, tokenizer, semantic_queries
 
         input_ids += padding
         input_mask += padding
+        input_mask[-1] = 1
         segment_ids += padding
         masked_labels += neg_one_padding
         
