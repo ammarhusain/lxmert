@@ -136,7 +136,7 @@ class GQATorchDataset(Dataset):
         if 'semantic_str' in datum and self.skip_semantics is False:
           sem_query = datum['semantic_str']
           is_matched = 0
-          if self.task_nsp_qfpm:
+          if args.task_nsp_qfpm:
             if random.random() < 0.5:
                 other_datum = self.data[random.randint(0, len(self.data)-1)]
                 sem_query = other_datum['semantic_str']
