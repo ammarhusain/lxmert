@@ -97,6 +97,7 @@ class GQA:
             epoch_nsp_avg = []
             for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
                 sb = [q + ' ** ' + sq for q, sq in zip(sent, sem_query)]
+                print(sb[:10])
                 self.model.train()
                 self.optim.zero_grad()
 
@@ -140,8 +141,7 @@ class GQA:
 
             log_str = "\nEpoch %d: Train %0.2f\n" % (epoch, evaluator.evaluate(quesid2ans) * 100.)
             print(f"Total loss for epoch = {epoch_pretrain_loss} ... NSP = {epoch_nsp_loss} ... MLM = {epoch_mlm_loss}")      
-            print(f"NSP: {epoch_nsp_avg} ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
-            print(f"NSP: average of average ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
+            #print(f"NSP: average of average ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
             
             if self.valid_tuple is not None:  # Do Validation
                 valid_score = self.evaluate(eval_tuple)
