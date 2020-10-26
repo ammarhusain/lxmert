@@ -102,7 +102,12 @@ class GQA:
                 self.optim.zero_grad()
 
                 feats, boxes, sem_matched, target = feats.cuda(), boxes.cuda(), sem_matched.cuda(), target.cuda()
-                logit_qa, logit_nsp_qfpm, logit_mlm_qfpm, masked_lang_labels = self.model(feats, boxes, sent, sem_query)
+                model_return = self.model(feats, boxes, sent, sem_query)
+                if args.task_nsp_qfpm or args.task_mlm_qfpm:
+                  logit_qa, logit_nsp_qfpm, logit_mlm_qfpm, masked_lang_labels = model_return
+                else:
+                  logit_qa = model_return
+
                 assert logit_qa.dim() == target.dim() == 2
                 if args.mce_loss:
                     max_value, target = target.max(1)
