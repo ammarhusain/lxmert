@@ -227,21 +227,13 @@ if __name__ == "__main__":
                           shuffle=False, drop_last=False, skip_semantics=True),
                 dump=os.path.join(args.output, 'submit_predict.json')
             )
-        if 'testdev' in args.test:
+        else:
             result = gqa.evaluate(
-                get_tuple('testdev', bs=args.batch_size,
+                get_tuple(args.test, bs=args.batch_size,
                           shuffle=False, drop_last=False, skip_semantics=True),
-                dump=os.path.join(args.output, 'testdev_predict.json')
+                dump=os.path.join(args.output, args.test + '_predict.json')
             )
-            print(result)
-        elif 'test' in args.test:
-            print("Loading TEST.JSON")
-            result = gqa.evaluate(
-                get_tuple('test', bs=args.batch_size,
-                          shuffle=False, drop_last=False, skip_semantics=True),
-                dump=os.path.join(args.output, 'test_predict.json')
-            )
-            print(result)     
+            print(result) 
     else:
         # print("Train Oracle: %0.2f" % (gqa.oracle_score(gqa.train_tuple) * 100))
         print('Splits in Train data:', gqa.train_tuple.dataset.splits)
