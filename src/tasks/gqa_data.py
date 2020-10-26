@@ -68,8 +68,6 @@ class GQABufferLoader():
     def load_data(self, name, number):
         if name == 'testdev':
             path = PATH_TO_DATA + "vg_gqa_imgfeat/gqa_testdev_obj36.tsv"
-        elif name == 'test':
-            path = PATH_TO_DATA + "vg_gqa_imgfeat/mscoco_imgfeat_test2015_obj36.tsv"
         else:
             path = PATH_TO_DATA + "vg_gqa_imgfeat/vg_gqa_obj36.tsv"
         key = "%s_%d" % (path, number)
@@ -118,6 +116,8 @@ class GQATorchDataset(Dataset):
         for img_datum in img_data:
             self.imgid2img[img_datum['img_id']] = img_datum
 
+        print(f"self.imgid2img {len(self.imgid2img)} .... img_data {len(img_data)}  .... self.raw_dataset.data {len(self.raw_dataset.data)}")
+          
         # Only kept the data with loaded image features
         self.data = []
         for datum in self.raw_dataset.data:

@@ -239,7 +239,7 @@ if __name__ == "__main__":
             result = gqa.evaluate(
                 get_tuple('test', bs=args.batch_size,
                           shuffle=False, drop_last=False, skip_semantics=True),
-                dump=os.path.join(args.output, 'testdev_predict.json')
+                dump=os.path.join(args.output, 'test_predict.json')
             )
             print(result)     
     else:
