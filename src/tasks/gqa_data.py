@@ -68,6 +68,8 @@ class GQABufferLoader():
     def load_data(self, name, number):
         if name == 'testdev':
             path = PATH_TO_DATA + "vg_gqa_imgfeat/gqa_testdev_obj36.tsv"
+        elif name == 'test':
+            path = PATH_TO_DATA + "vg_gqa_imgfeat/mscoco_imgfeat_test2015_obj36.tsv"
         else:
             path = PATH_TO_DATA + "vg_gqa_imgfeat/vg_gqa_obj36.tsv"
         key = "%s_%d" % (path, number)
@@ -108,6 +110,8 @@ class GQATorchDataset(Dataset):
         img_data = []
         if 'testdev' in dataset.splits or 'testdev_all' in dataset.splits:     # Always loading all the data in testdev
             img_data.extend(gqa_buffer_loader.load_data('testdev', -1))
+        elif 'test' in dataset.splits:
+            img_data.extend(gqa_buffer_loader.load_data('test', -1))          
         else:
             img_data.extend(gqa_buffer_loader.load_data('train', topk))
         self.imgid2img = {}
