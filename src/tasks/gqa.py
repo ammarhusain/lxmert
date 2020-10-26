@@ -96,8 +96,6 @@ class GQA:
             epoch_mlm_loss = 0
             epoch_nsp_avg = []
             for i, (ques_id, feats, boxes, sent, sem_query, sem_matched, target) in iter_wrapper(enumerate(loader)):
-                sb = [q + ' ** ' + sq for q, sq in zip(sent, sem_query)]
-                print(sb[:10])
                 self.model.train()
                 self.optim.zero_grad()
 
