@@ -29,7 +29,7 @@ def load_obj_tsv(fname, topk=None):
     with open(fname) as f:
         reader = csv.DictReader(f, FIELDNAMES, delimiter="\t")
         for i, item in enumerate(reader):
-            if item['img_id'][0] != 'n' and topk is -1:
+            if item['img_id'][0] == 'n' and topk is -1:
                 skip += 1
                 continue
             for key in ['img_h', 'img_w', 'num_boxes']:
