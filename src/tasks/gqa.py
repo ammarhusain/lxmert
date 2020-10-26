@@ -167,7 +167,8 @@ class GQA:
         self.model.eval()
         dset, loader, evaluator = eval_tuple
         quesid2ans = {}
-        for i, datum_tuple in enumerate(loader):
+        iter_wrapper = (lambda x: tqdm(x, total=len(loader))) if args.tqdm else (lambda x: x)
+        for i, datum_tuple in iter_wrapper(enumerate(loader)):
             ques_id, feats, boxes, sent, sem_query = datum_tuple[:5]   # avoid handling target
             with torch.no_grad():
                 feats, boxes = feats.cuda(), boxes.cuda()
@@ -233,6 +234,14 @@ if __name__ == "__main__":
                 dump=os.path.join(args.output, 'testdev_predict.json')
             )
             print(result)
+        elif 'test' in args.test:
+            print("Loading TEST.JSON")
+            result = gqa.evaluate(
+                get_tuple('test', bs=args.batch_size,
+                          shuffle=False, drop_last=False, skip_semantics=True),
+                dump=os.path.join(args.output, 'testdev_predict.json')
+            )
+            print(result)     
     else:
         # print("Train Oracle: %0.2f" % (gqa.oracle_score(gqa.train_tuple) * 100))
         print('Splits in Train data:', gqa.train_tuple.dataset.splits)
