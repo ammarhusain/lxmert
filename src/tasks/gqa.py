@@ -85,8 +85,8 @@ class GQA:
             
         best_valid = 0.
 
-        if args.no_fp_train is True:
-          loader.dataset.skip_semantics = True
+        #if args.no_fp_train is True:
+        #  loader.dataset.skip_semantics = True
 
         print(f"********* Finetuning for {args.epochs} epochs *********")
         for epoch in range(args.epochs):
@@ -116,8 +116,8 @@ class GQA:
 
                     
                 if args.task_nsp_qfpm:
-                    nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched) 
-                    loss += 100*nsp_qfpm_loss # multiply to equally weight the MLM with NSP loss
+                    nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched) * 100
+                    loss += nsp_qfpm_loss # multiply to equally weight the MLM with NSP loss
                     epoch_nsp_loss += nsp_qfpm_loss.detach()
                     _, idx = torch.max(logit_nsp_qfpm, 1)
                     diff = torch.abs(sem_matched - idx)
