@@ -145,8 +145,8 @@ class GQA:
                     quesid2ans[qid] = ans
 
             log_str = "\nEpoch %d: Train %0.2f\n" % (epoch, evaluator.evaluate(quesid2ans) * 100.)
-            print(f"Total loss for epoch = {loss} ... NSP = {epoch_nsp_loss} ... MLM = {epoch_mlm_loss}")      
-            #print(f"NSP: average of average ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
+            print(f"Total loss for epoch = {epoch_pretrain_loss} ... NSP = {epoch_nsp_loss} ... MLM = {epoch_mlm_loss}")      
+            print(f"NSP: average of average ....... {sum(epoch_nsp_avg)/len(epoch_nsp_avg)}")
             
             if self.valid_tuple is not None:  # Do Validation
                 valid_score = self.evaluate(eval_tuple)
