@@ -116,7 +116,7 @@ class GQA:
 
                     
                 if args.task_nsp_qfpm:
-                    nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched) * 100
+                    nsp_qfpm_loss =  self.mce_loss(logit_nsp_qfpm, sem_matched)# * 100
                     loss += nsp_qfpm_loss # multiply to equally weight the MLM with NSP loss
                     epoch_nsp_loss += nsp_qfpm_loss.detach()
                     _, idx = torch.max(logit_nsp_qfpm, 1)

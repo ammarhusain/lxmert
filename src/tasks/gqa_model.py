@@ -31,6 +31,10 @@ class GQAModel(nn.Module):
         if args.task_nsp_qfpm or args.task_mlm_qfpm:
           self.qfpm = BertPreTrainingHeads(BertConfig(vocab_size_or_config_json_file = 30522),
                                            self.lxrt_encoder.model.bert.embeddings.word_embeddings.weight)
+          self.fc_nsp_qfpm = nn.Sequential(
+              nn.Linear(hid_dim, 2),
+          )
+          self.fc_nsp_qfpm.apply(self.lxrt_encoder.model.init_bert_weights)
         
     def forward(self, vis_feat, vis_pos, sent, sem_queries):
         """
@@ -49,7 +53,8 @@ class GQAModel(nn.Module):
 #         first_raw_token = lang_feats[:,0,:]
 
         if args.task_nsp_qfpm or args.task_mlm_qfpm:
-          lang_prediction_scores, nsp_prediction_score = self.qfpm(lang_feats, pooled_output)
+          lang_prediction_scores, _ = self.qfpm(lang_feats, pooled_output)
+          nsp_prediction_score = self.fc_nsp_qfpm(lang_feats[:,0,:]) # project first token.
           return logit, nsp_prediction_score, lang_prediction_scores, masked_labels
         
         return logit
