@@ -1,7 +1,7 @@
 # Copy from https://github.com/huggingface/pytorch-transformers
 
 # PyTorch
-torch>=1.0.0
+torch>=1.6.0
 # Progress bars in model download and training scripts
 tqdm
 # Accessing files from S3 directly.
