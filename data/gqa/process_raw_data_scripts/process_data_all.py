@@ -1,9 +1,9 @@
 from pathlib import Path
 import json
 
-GQA_ROOT = '../'
+GQA_ROOT = '../questions/'
 
-path = Path(GQA_ROOT + 'data')
+path = Path(GQA_ROOT)
 split2name = {
     'train': 'train',
     'valid': 'val',
